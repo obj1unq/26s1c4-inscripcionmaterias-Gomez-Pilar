@@ -1,0 +1,102 @@
+import src.materia.Materia
+import src.carrera.Carrera
+import estudiante.*
+
+describe "Tests de Condiciones de Inscripción, Cupos y Bajas" {
+  
+  const programacion = new Carrera()
+  const medicina = new Carrera()
+
+  const elementos = new Materia(carrera = programacion)
+  const matematica1 = new Materia(carrera = programacion)
+  const objetos1 = new Materia(carrera = programacion)
+  const basesDeDatos = new Materia(carrera = programacion)
+  const objetos2 = new Materia(carrera = programacion, cupo = 3, requisitos = #{objetos1, matematica1})
+  const objetos3 = new Materia(carrera = programacion, requisitos = #{objetos2, basesDeDatos})
+  const progConcurrente = new Materia(carrera = programacion, requisitos = #{objetos1, basesDeDatos})
+
+  const quimica = new Materia(carrera = medicina)
+  const biologia1 = new Materia(carrera = medicina)
+  const biologia2 = new Materia(carrera = medicina, requisitos = #{biologia1})
+
+  const roque = new Estudiante(carrerasQueCursa = #{programacion, medicina})
+  const luisa = new Estudiante(carrerasQueCursa = #{programacion})
+  const romina = new Estudiante(carrerasQueCursa = #{programacion})
+  const alicia = new Estudiante(carrerasQueCursa = #{programacion})
+  const ana = new Estudiante(carrerasQueCursa = #{programacion})
+
+  method initialize() {
+    programacion.agregarMateria(elementos)
+    programacion.agregarMateria(matematica1)
+    programacion.agregarMateria(objetos1)
+    programacion.agregarMateria(basesDeDatos)
+    programacion.agregarMateria(objetos2)
+    programacion.agregarMateria(objetos3)
+    programacion.agregarMateria(progConcurrente)
+      
+    medicina.agregarMateria(quimica)
+    medicina.agregarMateria(biologia1)
+    medicina.agregarMateria(biologia2)
+
+    roque.aprobarMateria(elementos, 9)
+    roque.aprobarMateria(matematica1, 8)
+    roque.aprobarMateria(objetos1, 10)
+    roque.aprobarMateria(basesDeDatos, 7)
+    roque.aprobarMateria(quimica, 8)
+    roque.aprobarMateria(biologia1, 9)
+
+    luisa.aprobarMateria(elementos, 7)
+    luisa.aprobarMateria(objetos1, 8)
+    luisa.aprobarMateria(matematica1, 7)
+
+    romina.aprobarMateria(elementos, 8)
+    romina.aprobarMateria(objetos1, 7)
+    romina.aprobarMateria(matematica1, 9)
+
+    alicia.aprobarMateria(elementos, 9)
+    alicia.aprobarMateria(objetos1, 9)
+    alicia.aprobarMateria(matematica1, 8)
+
+    ana.aprobarMateria(elementos, 10)
+  }
+
+  test "Validaciones de inscripción para Roque (Correlativas y aprobadas previamente)" {
+    assert.that(roque.puedeInscribirseEn(objetos2))
+    assert.notThat(roque.puedeInscribirseEn(objetos3))
+    assert.notThat(roque.puedeInscribirseEn(objetos1))
+  }
+
+  test "Roque puede inscribirse a materias de ambas carreras según sus correlativas" {
+    assert.that(roque.puedeInscribirseEn(objetos2))
+    assert.that(roque.puedeInscribirseEn(progConcurrente))
+    assert.that(roque.puedeInscribirseEn(biologia2))
+  }
+
+  test "Inscripción masiva a Objetos 2 respeta el cupo de 3 y manda al 4to a lista de espera" {
+    luisa.inscribirseEn(objetos2)
+    romina.inscribirseEn(objetos2)
+    alicia.inscribirseEn(objetos2)
+    roque.inscribirseEn(objetos2)
+
+    const inscriptos = objetos2.estudiantesInscriptos()
+    assert.that(inscriptos.contains(luisa))
+    assert.that(inscriptos.contains(romina))
+    assert.that(inscriptos.contains(alicia))
+    
+    assert.notThat(inscriptos.contains(roque))
+    assert.that(objetos2.estudiantesEnListaDeEspera().contains(roque))
+  }
+
+  test "Al darse de baja un estudiante confirmado, el primero de la lista de espera toma su lugar" {
+    luisa.inscribirseEn(objetos2)
+    romina.inscribirseEn(objetos2)
+    alicia.inscribirseEn(objetos2)
+    roque.inscribirseEn(objetos2) 
+
+    objetos2.darDeBaja(romina)
+
+    assert.notThat(objetos2.estudiantesInscriptos().contains(romina))
+    assert.that(objetos2.estudiantesInscriptos().contains(roque))
+    assert.notThat(objetos2.estudiantesEnListaDeEspera().contains(roque))
+  }
+}
